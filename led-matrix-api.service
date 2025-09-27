@@ -1,0 +1,31 @@
+[Unit]
+Description=LED Matrix API Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ian
+Group=ian
+WorkingDirectory=/home/ian/Code/teensy-led-matrix-test
+Environment=PATH=/home/ian/Code/teensy-led-matrix-test/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/ian/Code/teensy-led-matrix-test/venv/bin/python python_utils/api_server.py --host 0.0.0.0 --port 8080
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/ian/Code/teensy-led-matrix-test
+ReadWritePaths=/tmp
+ReadWritePaths=/dev
+
+# Device access for serial communication
+SupplementaryGroups=dialout
+
+[Install]
+WantedBy=multi-user.target

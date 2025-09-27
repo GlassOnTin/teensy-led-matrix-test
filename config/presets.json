@@ -1,0 +1,57 @@
+{
+  "text_presets": {
+    "good_morning": {
+      "message": "\u2600\ufe0f Good Morning!",
+      "color": "yellow",
+      "effect": "fade",
+      "font": "medium"
+    },
+    "welcome_home": {
+      "message": "\ud83c\udfe0 Welcome Home!",
+      "color": "green",
+      "effect": "scroll",
+      "font": "medium"
+    },
+    "happy_birthday": {
+      "message": "\ud83c\udf82 Happy Birthday!",
+      "color": "rainbow",
+      "effect": "bounce",
+      "font": "medium"
+    },
+    "dinner_ready": {
+      "message": "\ud83c\udf7d\ufe0f Dinner Ready!",
+      "color": "orange",
+      "effect": "pulse",
+      "font": "large"
+    },
+    "bedtime": {
+      "message": "\ud83d\ude34 Good Night",
+      "color": "blue",
+      "effect": "fade",
+      "font": "small"
+    },
+    "test_preset": {
+      "message": "Test Message",
+      "color": "blue",
+      "effect": "scroll"
+    }
+  },
+  "quick_actions": {
+    "off": {
+      "action": "power",
+      "state": false
+    },
+    "dim": {
+      "action": "brightness",
+      "level": 32
+    },
+    "bright": {
+      "action": "brightness",
+      "level": 200
+    },
+    "effects": {
+      "action": "mode",
+      "mode": "effects"
+    }
+  }
+}

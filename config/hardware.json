@@ -1,0 +1,24 @@
+{
+  "display": {
+    "width": 64,
+    "height": 16,
+    "panels": {
+      "bottom_left": {"pin": 1},
+      "bottom_right": {"pin": 2},
+      "top_left": {"pin": 3},
+      "top_right": {"pin": 4}
+    },
+    "brightness_default": 96,
+    "brightness_max": 255,
+    "skip_first_column": true
+  },
+  "serial": {
+    "baud_rate": 6000000,
+    "timeout": 2.0,
+    "retry_attempts": 3,
+    "device_search_patterns": [
+      "/dev/ttyACM*",
+      "/dev/ttyUSB*"
+    ]
+  }
+}

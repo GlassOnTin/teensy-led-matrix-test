@@ -1,0 +1,44 @@
+#!/bin/bash
+# Quick LED message display script
+
+cd "$(dirname "$0")"
+
+# Check if text was provided
+if [ $# -eq 0 ]; then
+    echo "Usage: led_message \"Your message\" [options]"
+    echo ""
+    echo "Quick commands:"
+    echo "  led_message birthday     - Happy Birthday animation"
+    echo "  led_message welcome      - Welcome message"  
+    echo "  led_message party        - Party Time!"
+    echo "  led_message love         - I Love You"
+    echo ""
+    echo "Custom message:"
+    echo "  led_message \"Your Text\" [--color rainbow|fire|ocean|pulse]"
+    echo "                          [--effect confetti|stars|border]"
+    echo "                          [--speed 30]"
+    exit 1
+fi
+
+# Handle special shortcuts
+case "$1" in
+    birthday|bday)
+        exec python3 text_scroller.py --preset birthday "${@:2}"
+        ;;
+    welcome)
+        exec python3 text_scroller.py --preset welcome "${@:2}"
+        ;;
+    party)
+        exec python3 text_scroller.py --preset party "${@:2}"
+        ;;
+    love)
+        exec python3 text_scroller.py --preset love "${@:2}"
+        ;;
+    congrats|congratulations)
+        exec python3 text_scroller.py --preset congratulations "${@:2}"
+        ;;
+    *)
+        # Custom message
+        exec python3 text_scroller.py "$@"
+        ;;
+esac

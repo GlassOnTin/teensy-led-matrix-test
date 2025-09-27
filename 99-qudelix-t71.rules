@@ -1,0 +1,21 @@
+# Qudelix T71 USB Audio Device Rules
+# Vendor: NXP Semiconductors (0x1fc9)
+# Product: Qudelix-T71 2.0 (0x7302)
+
+# Disable USB autosuspend for Qudelix T71 to prevent audio issues
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", ATTR{power/control}="on", ATTR{power/autosuspend_delay_ms}="-1"
+
+# Set proper permissions for audio device
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", MODE="0666", GROUP="audio"
+
+# Ensure device is available to audio group
+SUBSYSTEM=="sound", ACTION=="add", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", GROUP="audio", MODE="0660"
+
+# Enable all USB audio interfaces (including potential microphone)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", ATTR{bInterfaceClass}=="01", ATTR{bInterfaceSubClass}=="*", MODE="0666", GROUP="audio"
+
+# Tag device for PulseAudio/PipeWire access
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", TAG+="uaccess", TAG+="udev-acl", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Optional: Force USB Audio Class 1.0 mode if needed (comment out if not needed)
+# ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1fc9", ATTR{idProduct}=="7302", RUN+="/bin/sh -c 'echo 1 > /sys/$devpath/bConfigurationValue'"

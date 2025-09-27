@@ -1,0 +1,14 @@
+{
+  "brightness": 128,
+  "mode": "text",
+  "active_effect": "rainbow",
+  "text_state": {
+    "message": "\u2600\ufe0f Good Morning!",
+    "color": "yellow",
+    "effect": "fade",
+    "font": "medium",
+    "duration": 0,
+    "position": "center"
+  },
+  "saved_at": 1758999164.1052427
+}

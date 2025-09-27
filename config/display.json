@@ -1,0 +1,20 @@
+{
+  "color_profiles": {
+    "daylight": {"gamma": 1.4, "contrast": 1.3},
+    "evening": {"gamma": 1.8, "contrast": 1.1},
+    "night": {"gamma": 2.2, "contrast": 0.8}
+  },
+  "text_effects": {
+    "scroll": {"speed_default": 30, "speed_range": [10, 100]},
+    "fade": {"duration_default": 2.0},
+    "bounce": {"amplitude": 3},
+    "typewriter": {"delay_default": 0.1},
+    "rainbow": {"cycle_speed": 5},
+    "pulse": {"frequency": 2.0}
+  },
+  "fonts": {
+    "small": {"name": "5x8_basic", "width": 5, "height": 8},
+    "medium": {"name": "8x8_bold", "width": 8, "height": 8},
+    "large": {"name": "8x16_display", "width": 8, "height": 16}
+  }
+}

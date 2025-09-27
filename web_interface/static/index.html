@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED Matrix Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔆 LED Matrix Control</h1>
+            <div class="status-bar">
+                <span id="status" class="status online">Connected</span>
+                <span id="brightness-display">Brightness: 96</span>
+                <span id="device-status" class="status">Device: Unknown</span>
+                <span id="last-update" class="status-time">Last update: --</span>
+            </div>
+        </header>
+
+        <main>
+            <!-- Quick Actions -->
+            <section class="quick-actions">
+                <h2>Quick Messages</h2>
+                <div class="preset-buttons">
+                    <button class="preset-btn" onclick="sendPreset('good_morning')">☀️ Good Morning</button>
+                    <button class="preset-btn" onclick="sendPreset('welcome_home')">🏠 Welcome Home</button>
+                    <button class="preset-btn" onclick="sendPreset('happy_birthday')">🎂 Happy Birthday</button>
+                    <button class="preset-btn" onclick="sendPreset('dinner_ready')">🍽️ Dinner Ready</button>
+                    <button class="preset-btn" onclick="sendPreset('bedtime')">😴 Good Night</button>
+                </div>
+            </section>
+
+            <!-- Custom Message -->
+            <section class="custom-message">
+                <h2>Custom Message</h2>
+                <form id="message-form" onsubmit="return sendMessage(event)">
+                    <div class="input-group">
+                        <label for="message">Message:</label>
+                        <input type="text" id="message" placeholder="Type your message here..." maxlength="200" required>
+                    </div>
+
+                    <div class="options-row">
+                        <div class="option-group">
+                            <label for="font">Font:</label>
+                            <select id="font">
+                                <option value="small">Small</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+
+                        <div class="option-group">
+                            <label for="effect">Effect:</label>
+                            <select id="effect">
+                                <option value="scroll" selected>Scroll</option>
+                                <option value="fade">Fade</option>
+                                <option value="bounce">Bounce</option>
+                                <option value="typewriter">Typewriter</option>
+                                <option value="pulse">Pulse</option>
+                                <option value="static">Static</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="color-picker">
+                        <label>Color:</label>
+                        <div class="color-buttons">
+                            <button type="button" class="color-btn red" onclick="selectColor('red')"></button>
+                            <button type="button" class="color-btn green" onclick="selectColor('green')"></button>
+                            <button type="button" class="color-btn blue" onclick="selectColor('blue')"></button>
+                            <button type="button" class="color-btn yellow" onclick="selectColor('yellow')"></button>
+                            <button type="button" class="color-btn cyan" onclick="selectColor('cyan')"></button>
+                            <button type="button" class="color-btn magenta" onclick="selectColor('magenta')"></button>
+                            <button type="button" class="color-btn white selected" onclick="selectColor('white')"></button>
+                            <button type="button" class="color-btn rainbow" onclick="selectColor('rainbow')">🌈</button>
+                        </div>
+                        <input type="hidden" id="selected-color" value="white">
+                    </div>
+
+                    <button type="submit" class="send-btn">📤 Send Message</button>
+                </form>
+            </section>
+
+            <!-- Device Controls -->
+            <section class="device-controls">
+                <h2>Device Controls</h2>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <button id="power-btn" class="control-btn power on" onclick="togglePower()">
+                            <span class="icon">⚡</span>
+                            <span class="label">Power On</span>
+                        </button>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="brightness">Brightness:</label>
+                        <input type="range" id="brightness" min="0" max="255" value="96" oninput="setBrightness(this.value)">
+                        <span id="brightness-value">96</span>
+                    </div>
+
+                    <div class="control-group">
+                        <button class="control-btn effects" onclick="switchToEffects()">
+                            <span class="icon">✨</span>
+                            <span class="label">Effects Mode</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Current Status -->
+            <section class="current-status">
+                <h2>Current Display</h2>
+                <div class="status-info">
+                    <div class="status-item">
+                        <strong>Mode:</strong> <span id="current-mode">Effects</span>
+                        <span class="status-indicator" id="mode-indicator">●</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>Last Message:</strong> <span id="last-message">None</span>
+                    </div>
+                    <div class="status-item">
+                        <strong>Active Effect:</strong> <span id="active-effect">rainbow</span>
+                        <span class="status-indicator" id="effect-indicator">●</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Status -->
+            <section class="system-status">
+                <h2>System Status</h2>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-icon">🔌</span>
+                            <h3>Connection</h3>
+                            <span class="status-indicator" id="connection-indicator">●</span>
+                        </div>
+                        <div class="status-details">
+                            <div class="status-detail">
+                                <span>WebSocket:</span>
+                                <span id="websocket-status">Connecting...</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>Serial Device:</span>
+                                <span id="serial-status">Unknown</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>API Response:</span>
+                                <span id="api-response-time">-- ms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-icon">📊</span>
+                            <h3>Performance</h3>
+                            <span class="status-indicator" id="performance-indicator">●</span>
+                        </div>
+                        <div class="status-details">
+                            <div class="status-detail">
+                                <span>Frame Rate:</span>
+                                <span id="frame-rate">-- fps</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>Uptime:</span>
+                                <span id="uptime">--</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>Memory:</span>
+                                <span id="memory-usage">-- MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="status-card">
+                        <div class="status-header">
+                            <span class="status-icon">⚙️</span>
+                            <h3>Hardware</h3>
+                            <span class="status-indicator" id="hardware-indicator">●</span>
+                        </div>
+                        <div class="status-details">
+                            <div class="status-detail">
+                                <span>Device Lock:</span>
+                                <span id="device-lock-status">Unknown</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>Temperature:</span>
+                                <span id="temperature">-- °C</span>
+                            </div>
+                            <div class="status-detail">
+                                <span>Power Draw:</span>
+                                <span id="power-draw">-- W</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>LED Matrix Family Interface | <a href="/docs" target="_blank">API Docs</a></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

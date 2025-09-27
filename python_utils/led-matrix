@@ -1,0 +1,330 @@
+#!/home/ian/Code/teensy-led-matrix-test/venv/bin/python3
+"""
+Unified LED Matrix Control - Simple command-line interface for all LED matrix functions
+"""
+
+import sys
+import os
+import argparse
+import subprocess
+from pathlib import Path
+
+# Add python_utils to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'python_utils'))
+
+def get_python_cmd():
+    """Get the correct Python command to use"""
+    venv_path = Path(__file__).parent / 'venv'
+    if not venv_path.exists():
+        print("❌ Virtual environment not found. Please run ./setup.sh first")
+        sys.exit(1)
+    
+    # Always use venv python for subprocess calls
+    venv_python = venv_path / 'bin' / 'python3'
+    return str(venv_python)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='LED Matrix Control - All-in-one tool for Teensy LED Matrix',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  ./led-matrix test              # Test serial connection
+  ./led-matrix test --pattern     # Show test patterns
+  ./led-matrix video movie.mp4    # Play video file
+  ./led-matrix video movie.mp4 --loop --flip  # Loop video, flipped for ceiling
+  ./led-matrix youtube URL        # Stream from YouTube
+  ./led-matrix audio              # Audio visualizer (spectrogram)
+  ./led-matrix text "Hello"       # Scrolling text
+  ./led-matrix fireworks          # Fireworks animation
+  ./led-matrix effects            # Switch to built-in effects mode
+  ./led-matrix api               # Start family-friendly web interface
+        """
+    )
+    
+    # Global options
+    parser.add_argument('--brightness', type=float, default=1.0,
+                       help='Global brightness (0.0-1.0, default: 1.0). Use 0.3 for nighttime')
+    
+    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    
+    # Test command
+    test_parser = subparsers.add_parser('test', help='Test serial connection')
+    test_parser.add_argument('--pattern', action='store_true', help='Show test patterns')
+    test_parser.add_argument('--port', help='Serial port')
+    
+    # Video command
+    video_parser = subparsers.add_parser('video', help='Play video file')
+    video_parser.add_argument('file', help='Video file path')
+    video_parser.add_argument('--loop', action='store_true', help='Loop continuously')
+    video_parser.add_argument('--flip', action='store_true', help='Flip vertically')
+    video_parser.add_argument('--gamma', type=float, default=1.4, help='Gamma (default: 1.4)')
+    video_parser.add_argument('--contrast', type=float, default=1.3, help='Contrast (default: 1.3)')
+    video_parser.add_argument('--blackout', type=int, default=0, help='Blackout N left columns')
+    
+    # YouTube command
+    yt_parser = subparsers.add_parser('youtube', help='Stream from YouTube')
+    yt_parser.add_argument('url', help='YouTube URL')
+    yt_parser.add_argument('--quality', default='240p', choices=['144p', '240p', '360p', '480p'])
+    yt_parser.add_argument('--gamma', type=float, default=1.4)
+    yt_parser.add_argument('--contrast', type=float, default=1.3)
+    
+    # Audio command
+    audio_parser = subparsers.add_parser('audio', help='Audio visualizer')
+    audio_parser.add_argument('--mode', default='vertical', 
+                             choices=['vertical', 'horizontal', 'reverse'],
+                             help='Display mode (default: vertical)')
+    audio_parser.add_argument('--device', type=int, help='Audio device index')
+    
+    # Phase Meter command
+    phase_parser = subparsers.add_parser('phase', help='Phase meter / oscilloscope visualization')
+    phase_parser.add_argument('--mode', choices=['lissajous', 'vertical', 'horizontal'],
+                             default='lissajous', help='Display mode (default: lissajous)')
+    phase_parser.add_argument('--source', choices=['mic', 'system', 'auto'], default='auto',
+                             help='Audio source')
+    phase_parser.add_argument('--device', type=int, help='Audio device index')
+    phase_parser.add_argument('--gain', type=float, default=4.0, help='Input gain (default: 4.0)')
+    phase_parser.add_argument('--persistence', type=float, default=0.85,
+                             help='Trail persistence 0-1 (default: 0.85)')
+    phase_parser.add_argument('--color', choices=['green', 'cyan', 'amber', 'white', 'rainbow'],
+                             default='green', help='Trace color')
+    phase_parser.add_argument('--rotate', type=float, default=0.0,
+                             help='Rotation speed in degrees/second (0=off, try 10-30)')
+    phase_parser.add_argument('--symmetry', choices=['none', 'mirror', 'quad', 'kaleidoscope'],
+                             default='none', help='Symmetry mode')
+    phase_parser.add_argument('--trail', choices=['normal', 'rainbow', 'decay'],
+                             default='normal', help='Trail effect')
+    phase_parser.add_argument('--beat', action='store_true', help='Beat-reactive brightness')
+    phase_parser.add_argument('--list-devices', action='store_true', help='List audio devices')
+    
+    # VU Meter command
+    vu_parser = subparsers.add_parser('vu', help='Horizontal stereo VU meter (-60dB center, 0dB edges)')
+    vu_parser.add_argument('--source', choices=['mic', 'system', 'auto'], default='auto',
+                          help='Audio source: mic, system, or auto')
+    vu_parser.add_argument('--device', type=int, help='Audio device index (overrides --source)')
+    vu_parser.add_argument('--smoothing', type=float, default=0.5, help='Smoothing factor (0-1, default: 0.5)')
+    vu_parser.add_argument('--palette', default='rainbow',
+                          choices=['classic', 'split', 'rainbow', 'viridis', 'fire', 'ocean'],
+                          help='Color palette: classic (green/yellow/red), split (red left/green right), rainbow (default), viridis, fire, ocean')
+    vu_parser.add_argument('--gain', type=float, default=2.0, help='Input gain multiplier (default: 2.0, use 4.0 for quiet sources)')
+    vu_parser.add_argument('--list-devices', action='store_true', help='List audio devices')
+    
+    # Text command
+    text_parser = subparsers.add_parser('text', help='Scrolling text')
+    text_parser.add_argument('message', help='Text to display')
+    text_parser.add_argument('--color', default='rainbow', 
+                            choices=['white', 'red', 'green', 'blue', 'rainbow'])
+    text_parser.add_argument('--speed', type=int, default=30, help='Scroll speed')
+    
+    # Fireworks command
+    fw_parser = subparsers.add_parser('fireworks', help='Fireworks animation')
+    fw_parser.add_argument('--port', help='Serial port')
+    
+    # Effects command (switch to built-in effects)
+    effects_parser = subparsers.add_parser('effects', help='Switch to built-in effects mode')
+    
+    # Webcam command
+    webcam_parser = subparsers.add_parser('webcam', help='Stream from webcam')
+    webcam_parser.add_argument('--duration', type=int, help='Duration in seconds')
+    
+    # Auto-cycle command
+    cycle_parser = subparsers.add_parser('cycle', help='Auto-cycle through effects')
+    cycle_parser.add_argument('--time', type=int, default=30,
+                             help='Seconds per effect (default: 30)')
+    cycle_parser.add_argument('--device', type=int, help='Audio device index')
+    cycle_parser.add_argument('--random', action='store_true',
+                             help='Random order instead of sequential')
+    cycle_parser.add_argument('--modes', type=str,
+                             help='Filter modes: vu,phase,spec,simple,fancy (comma-separated)')
+    
+    # Cast server command
+    cast_parser = subparsers.add_parser('cast', help='Start web-based casting server')
+    cast_parser.add_argument('--port', type=int, default=8080,
+                            help='Server port (default: 8080)')
+    
+    # Simple cast receiver command (replaces chromecast)
+    simple_parser = subparsers.add_parser('simplecast', help='Simple cast receiver (works with Chrome tab casting)')
+    simple_parser.add_argument('--port', type=int, default=9222,
+                              help='Server port (default: 9222)')
+    
+    # DLNA/UPnP renderer command
+    dlna_parser = subparsers.add_parser('dlna', help='DLNA/UPnP renderer (works with VLC, Windows, Android apps)')
+    dlna_parser.add_argument('--port', type=int, default=8008,
+                            help='Server port (default: 8008)')
+    dlna_parser.add_argument('--name', type=str, default='LED Matrix',
+                            help='Device name (default: LED Matrix)')
+
+    # REST API server command (new family-friendly interface)
+    api_parser = subparsers.add_parser('api', help='Start REST API server for family interface')
+    api_parser.add_argument('--port', type=int, default=8080,
+                           help='Server port (default: 8080)')
+    api_parser.add_argument('--host', type=str, default='0.0.0.0',
+                           help='Server host (default: 0.0.0.0)')
+    api_parser.add_argument('--debug', action='store_true',
+                           help='Enable debug mode')
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    # Get the correct Python command
+    python_cmd = get_python_cmd()
+    
+    # Change to project directory
+    os.chdir(Path(__file__).parent)
+    
+    # Helper to add brightness arg if needed
+    def add_brightness(cmd):
+        if args.brightness != 1.0:
+            cmd.extend(['--brightness', str(args.brightness)])
+    
+    # Execute commands
+    if args.command == 'test':
+        cmd = [python_cmd, 'python_utils/test_serial.py']
+        if args.pattern:
+            cmd.append('--pattern')
+        if args.port:
+            cmd.extend(['--port', args.port])
+        subprocess.run(cmd)
+    
+    elif args.command == 'video':
+        cmd = [python_cmd, 'python_utils/video_streamer.py', args.file]
+        if args.loop:
+            cmd.append('--loop')
+        if args.flip:
+            cmd.append('--flip')
+        cmd.extend(['--gamma', str(args.gamma)])
+        cmd.extend(['--contrast', str(args.contrast)])
+        if args.blackout:
+            cmd.extend(['--blackout', str(args.blackout)])
+        subprocess.run(cmd)
+    
+    elif args.command == 'youtube':
+        # Use the stream_loop.sh script for YouTube
+        cmd = ['./python_utils/stream_loop.sh', args.url, args.quality, 
+               str(args.gamma), str(args.contrast)]
+        subprocess.run(cmd)
+    
+    elif args.command == 'audio':
+        cmd = [python_cmd, 'python_utils/spectrogram.py', '--mode', args.mode]
+        if args.device is not None:
+            cmd.extend(['--device', str(args.device)])
+        add_brightness(cmd)
+        subprocess.run(cmd)
+    
+    elif args.command == 'text':
+        cmd = [python_cmd, 'python_utils/text_scroller.py', args.message,
+               '--color', args.color, '--speed', str(args.speed)]
+        subprocess.run(cmd)
+    
+    elif args.command == 'phase':
+        cmd = [python_cmd, 'python_utils/phase_meter.py']
+        if args.list_devices:
+            cmd.append('--list-devices')
+        else:
+            cmd.extend(['--mode', args.mode])
+            cmd.extend(['--source', args.source])
+            if args.device:
+                cmd.extend(['--device', str(args.device)])
+            cmd.extend(['--gain', str(args.gain)])
+            cmd.extend(['--persistence', str(args.persistence)])
+            cmd.extend(['--color', args.color])
+            cmd.extend(['--rotate', str(args.rotate)])
+            cmd.extend(['--symmetry', args.symmetry])
+            cmd.extend(['--trail', args.trail])
+            if args.beat:
+                cmd.append('--beat')
+            add_brightness(cmd)
+        subprocess.run(cmd)
+    
+    elif args.command == 'vu':
+        cmd = [python_cmd, 'python_utils/vu_meter.py']
+        if args.list_devices:
+            cmd.append('--list-devices')
+        else:
+            cmd.extend(['--source', args.source])
+            if args.device:
+                cmd.extend(['--device', str(args.device)])
+            cmd.extend(['--smoothing', str(args.smoothing)])
+            cmd.extend(['--palette', args.palette])
+            cmd.extend(['--gain', str(args.gain)])
+        add_brightness(cmd)
+        subprocess.run(cmd)
+    
+    elif args.command == 'fireworks':
+        cmd = [python_cmd, 'python_utils/fireworks.py']
+        if args.port:
+            cmd.extend(['--port', args.port])
+        subprocess.run(cmd)
+    
+    elif args.command == 'effects':
+        # Just send 'e' command to switch to effects mode
+        cmd = [python_cmd, '-c', """
+import sys
+import os
+sys.path.insert(0, 'python_utils')
+# Set env var to prevent sending 'e' again on close
+os.environ['LED_MATRIX_KEEP_STREAM_MODE'] = '1'
+from serial_connection import TeensyConnection
+conn = TeensyConnection()
+if conn.connect(mode='e'):
+    print(f'✓ Switched to effects mode on {conn.port}')
+    # Don't send mode command on close
+    conn.ser.close() if conn.ser else None
+else:
+    print('❌ Failed to connect to Teensy')
+"""]
+        subprocess.run(cmd)
+    
+    elif args.command == 'webcam':
+        cmd = [python_cmd, 'python_utils/video_streamer.py', 'webcam']
+        if args.duration:
+            cmd.extend(['--duration', str(args.duration)])
+        subprocess.run(cmd)
+    
+    elif args.command == 'cycle':
+        cmd = [python_cmd, 'python_utils/auto_cycle.py']
+        cmd.extend(['--time', str(args.time)])
+        if args.device:
+            cmd.extend(['--device', str(args.device)])
+        if args.random:
+            cmd.append('--random')
+        if args.modes:
+            cmd.extend(['--modes', args.modes])
+        subprocess.run(cmd)
+    
+    elif args.command == 'cast':
+        cmd = [python_cmd, 'led_cast_server.py']
+        print(f"🎬 Starting LED Matrix Cast Server on port {args.port}")
+        print(f"Open http://localhost:{args.port} in your browser")
+        print("Or use http://<your-ip>:{args.port} from other devices")
+        subprocess.run(cmd)
+    
+    elif args.command == 'simplecast':
+        cmd = [python_cmd, 'simple_cast_receiver.py']
+        print(f"📺 Starting Simple Cast Receiver on port {args.port}")
+        print("This works with Chrome's tab casting feature")
+        subprocess.run(cmd)
+    
+    elif args.command == 'dlna':
+        cmd = [python_cmd, 'dlna_renderer.py']
+        print(f"📺 Starting DLNA/UPnP Renderer '{args.name}' on port {args.port}")
+        print("Your LED Matrix will appear in VLC, Windows Cast, and DLNA apps")
+        subprocess.run(cmd)
+
+    elif args.command == 'api':
+        cmd = [python_cmd, 'python_utils/api_server.py']
+        cmd.extend(['--host', args.host])
+        cmd.extend(['--port', str(args.port)])
+        if args.debug:
+            cmd.append('--debug')
+        print(f"🌐 Starting LED Matrix API server on http://{args.host}:{args.port}")
+        print(f"Web interface: http://{args.host}:{args.port}/web/")
+        print(f"API docs: http://{args.host}:{args.port}/docs")
+        print("Family-friendly text display and control interface")
+        subprocess.run(cmd)
+
+if __name__ == '__main__':
+    main()

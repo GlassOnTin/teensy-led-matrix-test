@@ -1,0 +1,5 @@
+#!/bin/bash
+# Simple wrapper for the spectrogram visualizer
+
+cd "$(dirname "$0")"
+exec python3 spectrogram.py "$@"

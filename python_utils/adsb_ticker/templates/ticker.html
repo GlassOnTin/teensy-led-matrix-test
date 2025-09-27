@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aircraft Ticker Display</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000;
+            color: #0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #0f0;
+            text-align: center;
+        }
+
+        .display-container {
+            background-color: #111;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .led-display {
+            background-color: #000;
+            border: 1px solid #0f0;
+            display: inline-block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        #ticker-stream {
+            width: 640px;
+            height: 160px;
+        }
+
+        .controls {
+            background-color: #111;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-width: 640px;
+        }
+
+        .control-group {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        label {
+            margin-right: 10px;
+            min-width: 150px;
+        }
+
+        input[type="number"], input[type="text"] {
+            background-color: #000;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            flex: 1;
+        }
+
+        button {
+            background-color: #000;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+
+        .stats {
+            background-color: #111;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-width: 640px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            padding: 5px;
+        }
+
+        .stat-label {
+            color: #0f0;
+        }
+
+        .stat-value {
+            color: #ff0;
+            font-weight: bold;
+        }
+
+        .aircraft-list {
+            background-color: #111;
+            border: 2px solid #0f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            min-width: 640px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .aircraft-item {
+            padding: 5px;
+            border-bottom: 1px solid #0f0;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #0f0;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>✈️ Aircraft Ticker Display</h1>
+
+    <div class="display-container">
+        <h2>LED Matrix Preview (64x16)</h2>
+        <div class="led-display">
+            <img id="ticker-stream" src="/stream.mjpeg" alt="Aircraft Ticker">
+        </div>
+    </div>
+
+    <div class="controls">
+        <h2>Configuration</h2>
+        <div class="control-group">
+            <label>Source URL:</label>
+            <input type="text" id="source-url" value="{{ config.source_url }}">
+        </div>
+        <div class="control-group">
+            <label>Observer Latitude:</label>
+            <input type="number" id="observer-lat" value="{{ config.observer_lat }}" step="0.001">
+        </div>
+        <div class="control-group">
+            <label>Observer Longitude:</label>
+            <input type="number" id="observer-lon" value="{{ config.observer_lon }}" step="0.001">
+        </div>
+        <div class="control-group">
+            <label>Max Distance (nm):</label>
+            <input type="number" id="max-distance" value="{{ config.max_distance_nm }}" min="1" max="250">
+        </div>
+        <div class="control-group">
+            <label>Min Altitude (ft):</label>
+            <input type="number" id="min-altitude" value="{{ config.min_altitude }}" min="0" step="100">
+        </div>
+        <div class="control-group">
+            <label>Scroll Speed:</label>
+            <input type="number" id="scroll-speed" value="{{ config.scroll_speed }}" min="1" max="10">
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+            <button onclick="updateConfig()">Update Configuration</button>
+            <button onclick="refreshData()">Refresh Now</button>
+        </div>
+    </div>
+
+    <div class="stats">
+        <h2>Statistics</h2>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Aircraft Count:</span>
+                <span class="stat-value" id="aircraft-count">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Last Update:</span>
+                <span class="stat-value" id="last-update">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Closest Aircraft:</span>
+                <span class="stat-value" id="closest-aircraft">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Furthest Aircraft:</span>
+                <span class="stat-value" id="furthest-aircraft">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="aircraft-list">
+        <h2>Aircraft List (sorted by distance)</h2>
+        <div id="aircraft-list-content">
+            Loading...
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Data source: <a href="{{ config.source_url }}" style="color: #0f0;">{{ config.source_url }}</a></p>
+        <p>LED Matrix: 64x16 pixels | Update interval: {{ config.update_interval }}s</p>
+    </div>
+
+    <script>
+        function updateConfig() {
+            const config = {
+                source_url: document.getElementById('source-url').value,
+                observer_lat: parseFloat(document.getElementById('observer-lat').value),
+                observer_lon: parseFloat(document.getElementById('observer-lon').value),
+                max_distance_nm: parseFloat(document.getElementById('max-distance').value),
+                min_altitude: parseInt(document.getElementById('min-altitude').value),
+                scroll_speed: parseInt(document.getElementById('scroll-speed').value)
+            };
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('Configuration updated!');
+                refreshData();
+            })
+            .catch(error => {
+                alert('Error updating configuration: ' + error);
+            });
+        }
+
+        function refreshData() {
+            fetch('/api/aircraft')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('aircraft-count').textContent = data.count;
+                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+
+                    if (data.aircraft.length > 0) {
+                        const closest = data.aircraft[0];
+                        const furthest = data.aircraft[data.aircraft.length - 1];
+
+                        document.getElementById('closest-aircraft').textContent =
+                            `${closest.callsign || closest.hex} (${closest.distance_nm.toFixed(1)}nm)`;
+                        document.getElementById('furthest-aircraft').textContent =
+                            `${furthest.callsign || furthest.hex} (${furthest.distance_nm.toFixed(1)}nm)`;
+
+                        let listHtml = '';
+                        data.aircraft.forEach((ac, index) => {
+                            const callsign = ac.callsign || ac.hex.toUpperCase();
+                            const alt = ac.altitude ? `${ac.altitude}ft` : '---ft';
+                            const spd = ac.ground_speed ? `${Math.round(ac.ground_speed)}kt` : '---kt';
+                            const dist = ac.distance_nm ? `${ac.distance_nm.toFixed(1)}nm` : '---nm';
+
+                            listHtml += `<div class="aircraft-item">${index + 1}. ${callsign.padEnd(10)} ${dist.padEnd(10)} ${alt.padEnd(10)} ${spd}</div>`;
+                        });
+
+                        document.getElementById('aircraft-list-content').innerHTML = listHtml;
+                    } else {
+                        document.getElementById('closest-aircraft').textContent = 'None';
+                        document.getElementById('furthest-aircraft').textContent = 'None';
+                        document.getElementById('aircraft-list-content').innerHTML = '<div class="aircraft-item">No aircraft detected</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching aircraft data:', error);
+                });
+        }
+
+        setInterval(refreshData, 5000);
+
+        refreshData();
+    </script>
+</body>
+</html>
